@@ -15,6 +15,7 @@ data = np.genfromtxt('pointcloud1.fuse')
 x = data[:,0]
 y = data[:,1]
 z = data[:,2]
+color = data[:,3]
 
-scatter = ax.scatter(x[0::v] ,y[0::v] ,z[0::v] )
+scatter = ax.scatter(x[0::v] ,y[0::v] ,z[0::v], c=color[0::v])
 pyplot.show()
