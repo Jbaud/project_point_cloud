@@ -165,9 +165,14 @@ for index,row in enumerate(d):
 #point1,normal1 =  best_fitting_plane(part1)
 
 
+#PART 1 AND 2 ARE THE TWO WALLS/BUILDING
+#the 2 first function don't work very well -> too much dispartiy in data
+
 #print point1
 #print normal1
 
 #scatter = ax.scatter(new_x ,new_y ,new_z, c=new_color, cmap='plasma')
+
+#only shows one wall 
 scatter = ax.scatter(part1[:,0],part1[:,1],part1[:,2], c=part1[:,3], cmap='plasma')
 pyplot.show()
