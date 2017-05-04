@@ -10,9 +10,19 @@ from sklearn.preprocessing import normalize
 import scipy.linalg
 from scipy.ndimage.measurements import label
 from skimage.measure import LineModelND, ransac
+import os
 
 v = 100
 threshold = 50
+
+
+#tmp directory for tiles from bing maps
+if not os.path.exists("Outputs"):
+	os.makedirs("Outputs")
+else:
+	filelist = [ f for f in os.listdir("Outputs")]
+	for f in filelist:
+		os.remove("Outputs/" + f)
 
 
 data = np.genfromtxt('pointcloud1.fuse')
@@ -43,7 +53,7 @@ new_z = np.delete(z, to_delete)
 
 # save to disk as csv 
 c = np.column_stack((new_x,new_y,new_z,new_color))
-np.savetxt('/Users/Jules/Downloads/final_project_data/test.txt', c, delimiter=' ', fmt='%s')
+np.savetxt('Outputs/test.txt', c, delimiter=' ', fmt='%s')
 
 #sort by first column
 d  = c[c[:,0].argsort()]
@@ -58,8 +68,8 @@ for index,row in enumerate(d):
 part1 = np.delete(part1, [3], axis=1)
 part2 = np.delete(part1, [3], axis=1)		
 
-np.savetxt('/Users/Jules/Downloads/final_project_data/part1.txt', part1, delimiter=' ,', fmt='%s')
-np.savetxt('/Users/Jules/Downloads/final_project_data/part2.txt', part2, delimiter=' ,', fmt='%s')
+np.savetxt('Outputs/part1.txt', part1, delimiter=' ,', fmt='%s')
+np.savetxt('Outputs/part2.txt', part2, delimiter=' ,', fmt='%s')
 
 # this part does a ML regression to find the blue line
 model_robust, inliers = ransac(part1, LineModelND, min_samples=2,
@@ -90,7 +100,7 @@ model_robust, inliers2 = ransac(part2, LineModelND, min_samples=2,
                                residual_threshold=0.00001, max_trials=1000)
 outliers = inliers == False
 
-# second side
+# second sid
 '''
 ax.scatter(part2[inliers][:, 0], part2[inliers][:, 1], part2[inliers][:, 2], c='g',
            marker='o', label='Inlier data2')
