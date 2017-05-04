@@ -11,44 +11,6 @@ import scipy.linalg
 from scipy.ndimage.measurements import label
 from skimage.measure import LineModelND, ransac
 
-#fig = pylab.figure()
-#ax = Axes3D(fig)
-
-
-def is_outlier(points, thresh=3.5):
-    """
-    Returns a boolean array with True if points are outliers and False 
-    otherwise.
-
-    Parameters:
-    -----------
-        points : An numobservations by numdimensions array of observations
-        thresh : The modified z-score to use as a threshold. Observations with
-            a modified z-score (based on the median absolute deviation) greater
-            than this value will be classified as outliers.
-
-    Returns:
-    --------
-        mask : A numobservations-length boolean array.
-
-    References:
-    ----------
-        Boris Iglewicz and David Hoaglin (1993), "Volume 16: How to Detect and
-        Handle Outliers", The ASQC Basic References in Quality Control:
-        Statistical Techniques, Edward F. Mykytka, Ph.D., Editor. 
-    """
-    if len(points.shape) == 1:
-        points = points[:,None]
-    median = np.median(points, axis=0)
-    diff = np.sum((points - median)**2, axis=-1)
-    diff = np.sqrt(diff)
-    med_abs_deviation = np.median(diff)
-
-    modified_z_score = 0.6745 * diff / med_abs_deviation
-
-    return modified_z_score > thresh
-
-
 v = 100
 threshold = 50
 
@@ -78,12 +40,6 @@ new_x = np.delete(x, to_delete)
 new_y = np.delete(y, to_delete)
 new_z = np.delete(z, to_delete)
 
-#average_x =  reduce(lambda a, b: a + b, new_x) / len(new_x)
-#average_y =  reduce(lambda a, b: a + b, new_y) / len(new_y)
-#average_z =  reduce(lambda a, b: a + b, new_z) / len(new_z)
-
-#print average_x
-#print average_y
 
 # save to disk as csv 
 c = np.column_stack((new_x,new_y,new_z,new_color))
@@ -92,11 +48,12 @@ np.savetxt('/Users/Jules/Downloads/final_project_data/test.txt', c, delimiter=' 
 #sort by first column
 d  = c[c[:,0].argsort()]
 
-# looking for a sharp diff in alt -> means we changed side 
+# looking for a sharp diff in alt -> means we changed side
+#part1 and part2 are the two sides on the road 
 for index,row in enumerate(d):
    if (d[index][3] - d[index-1][3] >70 ) and index > 0:
-	part12 = d[0:index].copy()
-	part1 = d[index:-1].copy()
+	part1 = d[0:index].copy()
+	part2 = d[index:-1].copy()
 
 part1 = np.delete(part1, [3], axis=1)
 part2 = np.delete(part1, [3], axis=1)		
@@ -104,10 +61,7 @@ part2 = np.delete(part1, [3], axis=1)
 np.savetxt('/Users/Jules/Downloads/final_project_data/part1.txt', part1, delimiter=' ,', fmt='%s')
 np.savetxt('/Users/Jules/Downloads/final_project_data/part2.txt', part2, delimiter=' ,', fmt='%s')
 
-#def reject_outliers(data, m):
-#    return data[abs(data - np.mean(data)) < m * np.std(data)]
-
-#part1 = reject_outliers(part1,6)
+# this part does a ML regression to find the blue line
 model_robust, inliers = ransac(part1, LineModelND, min_samples=2,
                                residual_threshold=0.00001, max_trials=1000)
 outliers = inliers == False
@@ -120,6 +74,7 @@ ax.scatter(part1[inliers][:, 0], part1[inliers][:, 1], part1[inliers][:, 2], c='
            marker='o', label='Inlier data')
 ax.scatter(part1[outliers][:, 0], part1[outliers][:, 1], part1[outliers][:, 2], c='r',
            marker='o', label='Outlier data')
+
 average_x =  reduce(lambda a, b: a + b, part1[inliers][:, 0]) / len(part1[inliers][:, 0])
 average_y =  reduce(lambda a, b: a + b, part1[inliers][:, 1]) / len(part1[inliers][:, 1])
 average_z =  np.min(new_z)
@@ -131,6 +86,8 @@ ax.legend(loc='lower left')
 pyplot.show()
 
 
+# this part is to find plane
+# but does not works so well because of the of extreme points
 
 '''
 data = np.c_[part1[inliers][:, 0],part1[inliers][:, 1],part1[inliers][:, 2]]
