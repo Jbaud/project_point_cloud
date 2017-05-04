@@ -9,6 +9,7 @@ import functools
 from sklearn.preprocessing import normalize
 import scipy.linalg
 from scipy.ndimage.measurements import label
+from skimage.measure import LineModelND, ransac
 
 #fig = pylab.figure()
 #ax = Axes3D(fig)
@@ -94,8 +95,8 @@ d  = c[c[:,0].argsort()]
 # looking for a sharp diff in alt -> means we changed side 
 for index,row in enumerate(d):
    if (d[index][3] - d[index-1][3] >70 ) and index > 0:
-	part1 = d[0:index].copy()
-	part2 = d[index:-1].copy()
+	part12 = d[0:index].copy()
+	part1 = d[index:-1].copy()
 
 part1 = np.delete(part1, [3], axis=1)
 part2 = np.delete(part1, [3], axis=1)		
@@ -107,9 +108,33 @@ np.savetxt('/Users/Jules/Downloads/final_project_data/part2.txt', part2, delimit
 #    return data[abs(data - np.mean(data)) < m * np.std(data)]
 
 #part1 = reject_outliers(part1,6)
+model_robust, inliers = ransac(part1, LineModelND, min_samples=2,
+                               residual_threshold=0.00001, max_trials=1000)
+outliers = inliers == False
 
 
-data = np.c_[part1[:,0],part1[:,1],part1[:,2]]
+
+fig = pyplot.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(part1[inliers][:, 0], part1[inliers][:, 1], part1[inliers][:, 2], c='b',
+           marker='o', label='Inlier data')
+ax.scatter(part1[outliers][:, 0], part1[outliers][:, 1], part1[outliers][:, 2], c='r',
+           marker='o', label='Outlier data')
+average_x =  reduce(lambda a, b: a + b, part1[inliers][:, 0]) / len(part1[inliers][:, 0])
+average_y =  reduce(lambda a, b: a + b, part1[inliers][:, 1]) / len(part1[inliers][:, 1])
+average_z =  np.min(new_z)
+
+ax.scatter(average_x, average_y, average_z, c='g',
+           marker='o', label='mean data')
+
+ax.legend(loc='lower left')
+pyplot.show()
+
+
+
+'''
+data = np.c_[part1[inliers][:, 0],part1[inliers][:, 1],part1[inliers][:, 2]]
+
 
 # regular grid covering the domain of the data
 mn = np.min(data, axis=0)
@@ -136,18 +161,24 @@ elif order == 2:
     # evaluate it on a grid
     Z = np.dot(np.c_[np.ones(XX.shape), XX, YY, XX*YY, XX**2, YY**2], C).reshape(X.shape)
 
+'''
 # plot points and fitted surface
 
+"""
 fig = pyplot.figure()
-ax = fig.gca(projection='3d')
+#ax = fig.gca(111,projection='3d')
+ax = fig.add_subplot(111, projection='3d')
 ax.plot_surface(X, Y, Z, rstride=1, cstride=1, alpha=0.2)
-ax.scatter(data[:,0], data[:,1], data[:,2], c='r', s=50)
+#ax.scatter(new_x, new_y, new_z, c='b', s=50)
+ax.scatter(part1[inliers][:, 0], part1[inliers][:, 1], part1[inliers][:, 2], c='r',
+           marker='o', label='Inlier data')
 pyplot.xlabel('X')
 pyplot.ylabel('Y')
 ax.set_zlabel('Z')
 ax.axis('equal')
 ax.axis('tight')
 pyplot.show()
+"""
 
 
 #scatter = ax.scatter(new_x ,new_y ,new_z, c=new_color, cmap='plasma')
