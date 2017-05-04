@@ -4,119 +4,52 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import random
 import mpld3
+import scipy.optimize
+import functools
+from sklearn.preprocessing import normalize
+import scipy.linalg
+from scipy.ndimage.measurements import label
+
+#fig = pylab.figure()
+#ax = Axes3D(fig)
 
 
-def PCA(data, correlation = False, sort = True):
-	""" Applies Principal Component Analysis to the data
+def is_outlier(points, thresh=3.5):
+    """
+    Returns a boolean array with True if points are outliers and False 
+    otherwise.
 
-	Parameters
-	----------        
-	data: array
-		The array containing the data. The array must have NxM dimensions, where each
-		of the N rows represents a different individual record and each of the M columns
-		represents a different variable recorded for that individual record.
-			array([
-			[V11, ... , V1m],
-			...,
-			[Vn1, ... , Vnm]])
+    Parameters:
+    -----------
+        points : An numobservations by numdimensions array of observations
+        thresh : The modified z-score to use as a threshold. Observations with
+            a modified z-score (based on the median absolute deviation) greater
+            than this value will be classified as outliers.
 
-	correlation(Optional) : bool
-			Set the type of matrix to be computed (see Notes):
-				If True compute the correlation matrix.
-				If False(Default) compute the covariance matrix. 
+    Returns:
+    --------
+        mask : A numobservations-length boolean array.
 
-	sort(Optional) : bool
-			Set the order that the eigenvalues/vectors will have
-				If True(Default) they will be sorted (from higher value to less).
-				If False they won't.   
-	Returns
-	-------
-	eigenvalues: (1,M) array
-		The eigenvalues of the corresponding matrix.
+    References:
+    ----------
+        Boris Iglewicz and David Hoaglin (1993), "Volume 16: How to Detect and
+        Handle Outliers", The ASQC Basic References in Quality Control:
+        Statistical Techniques, Edward F. Mykytka, Ph.D., Editor. 
+    """
+    if len(points.shape) == 1:
+        points = points[:,None]
+    median = np.median(points, axis=0)
+    diff = np.sum((points - median)**2, axis=-1)
+    diff = np.sqrt(diff)
+    med_abs_deviation = np.median(diff)
 
-	eigenvector: (M,M) array
-		The eigenvectors of the corresponding matrix.
+    modified_z_score = 0.6745 * diff / med_abs_deviation
 
-	Notes
-	-----
-	The correlation matrix is a better choice when there are different magnitudes
-	representing the M variables. Use covariance matrix in other cases.
-	"""
+    return modified_z_score > thresh
 
-	mean = np.mean(data, axis=0)
-
-	data_adjust = data - mean
-
-	#: the data is transposed due to np.cov/corrcoef syntax
-	if correlation:
-
-		matrix = np.corrcoef(data_adjust.T)
-
-	else:
-		matrix = np.cov(data_adjust.T) 
-
-	eigenvalues, eigenvectors = np.linalg.eig(matrix)
-
-	if sort:
-		#: sort eigenvalues and eigenvectors
-		sort = eigenvalues.argsort()[::-1]
-		eigenvalues = eigenvalues[sort]
-		eigenvectors = eigenvectors[:,sort]
-
-	return eigenvalues, eigenvectors
-
-def best_fitting_plane(points, equation=False):
-	""" Computes the best fitting plane of the given points
-
-	Parameters
-	----------        
-	points: array
-		The x,y,z coordinates corresponding to the points from which we want
-		to define the best fitting plane. Expected format:
-			array([
-			[x1,y1,z1],
-			...,
-			[xn,yn,zn]])
-
-	equation(Optional) : bool
-			Set the oputput plane format:
-				If True return the a,b,c,d coefficients of the plane.
-				If False(Default) return 1 Point and 1 Normal vector.    
-	Returns
-	-------
-	a, b, c, d : float
-		The coefficients solving the plane equation.
-
-	or
-
-	point, normal: array
-		The plane defined by 1 Point and 1 Normal vector. With format:
-		array([Px,Py,Pz]), array([Nx,Ny,Nz])
-
-	"""
-
-	w, v = PCA(points)
-
-	#: the normal of the plane is the last eigenvector
-	normal = v[:,2]
-
-	#: get a point from the plane
-	point = np.mean(points, axis=0)
-
-
-	if equation:
-		a, b, c = normal
-		d = -(np.dot(normal, point))
-		return a, b, c, d
-
-	else:
-		return point, normal   
-
-fig = pylab.figure()
-ax = Axes3D(fig)
 
 v = 100
-threshold = 80
+threshold = 50
 
 
 data = np.genfromtxt('pointcloud1.fuse')
@@ -131,19 +64,22 @@ y =y[0::v]
 z= z[0::v]
 color = color[0::v]
 
+print z
+
 to_delete = []
 for index,elt in enumerate(color):
 	if color[index] < threshold:
-		to_delete.append(index)
+	   	to_delete.append(index)
 
+print len(to_delete)
 new_color = np.delete(color, to_delete)
 new_x = np.delete(x, to_delete)
 new_y = np.delete(y, to_delete)
 new_z = np.delete(z, to_delete)
 
-average_x =  reduce(lambda a, b: a + b, new_x) / len(new_x)
-average_y =  reduce(lambda a, b: a + b, new_y) / len(new_y)
-average_z =  reduce(lambda a, b: a + b, new_z) / len(new_z)
+#average_x =  reduce(lambda a, b: a + b, new_x) / len(new_x)
+#average_y =  reduce(lambda a, b: a + b, new_y) / len(new_y)
+#average_z =  reduce(lambda a, b: a + b, new_z) / len(new_z)
 
 #print average_x
 #print average_y
@@ -161,18 +97,63 @@ for index,row in enumerate(d):
 	part1 = d[0:index].copy()
 	part2 = d[index:-1].copy()
 
-#part1 = np.delete(part1, [3], axis=1)
-#point1,normal1 =  best_fitting_plane(part1)
+part1 = np.delete(part1, [3], axis=1)
+part2 = np.delete(part1, [3], axis=1)		
+
+np.savetxt('/Users/Jules/Downloads/final_project_data/part1.txt', part1, delimiter=' ,', fmt='%s')
+np.savetxt('/Users/Jules/Downloads/final_project_data/part2.txt', part2, delimiter=' ,', fmt='%s')
+
+#def reject_outliers(data, m):
+#    return data[abs(data - np.mean(data)) < m * np.std(data)]
+
+#part1 = reject_outliers(part1,6)
 
 
-#PART 1 AND 2 ARE THE TWO WALLS/BUILDING
-#the 2 first function don't work very well -> too much dispartiy in data
+data = np.c_[part1[:,0],part1[:,1],part1[:,2]]
 
-#print point1
-#print normal1
+# regular grid covering the domain of the data
+mn = np.min(data, axis=0)
+mx = np.max(data, axis=0)
+X,Y = np.meshgrid(np.linspace(mn[0], mx[0], 20), np.linspace(mn[1], mx[1], 20))
+
+order = 1    # 1: linear, 2: quadratic
+if order == 1:
+    # best-fit linear plane
+    A = np.c_[data[:,0], data[:,1], np.ones(data.shape[0])]
+    C,_,_,_ = scipy.linalg.lstsq(A, data[:,2])    # coefficients
+    
+    # evaluate it on grid
+    Z = C[0]*X + C[1]*Y + C[2]
+    
+    # or expressed using matrix/vector product
+    #Z = np.dot(np.c_[XX, YY, np.ones(XX.shape)], C).reshape(X.shape)
+
+elif order == 2:
+    # best-fit quadratic curve
+    A = np.c_[np.ones(data.shape[0]), data[:,:2], np.prod(data[:,:2], axis=1), data[:,:2]**2]
+    C,_,_,_ = scipy.linalg.lstsq(A, data[:,2])
+    
+    # evaluate it on a grid
+    Z = np.dot(np.c_[np.ones(XX.shape), XX, YY, XX*YY, XX**2, YY**2], C).reshape(X.shape)
+
+# plot points and fitted surface
+
+fig = pyplot.figure()
+ax = fig.gca(projection='3d')
+ax.plot_surface(X, Y, Z, rstride=1, cstride=1, alpha=0.2)
+ax.scatter(data[:,0], data[:,1], data[:,2], c='r', s=50)
+pyplot.xlabel('X')
+pyplot.ylabel('Y')
+ax.set_zlabel('Z')
+ax.axis('equal')
+ax.axis('tight')
+pyplot.show()
+
 
 #scatter = ax.scatter(new_x ,new_y ,new_z, c=new_color, cmap='plasma')
 
 #only shows one wall 
-scatter = ax.scatter(part1[:,0],part1[:,1],part1[:,2], c=part1[:,3], cmap='plasma')
-pyplot.show()
+
+
+#scatter = ax.scatter(part2[:,0],part2[:,1],part2[:,2], c=part2[:,3], cmap='plasma')
+#pyplot.show()
