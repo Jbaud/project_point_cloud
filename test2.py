@@ -70,21 +70,44 @@ outliers = inliers == False
 
 fig = pyplot.figure()
 ax = fig.add_subplot(111, projection='3d')
+'''
 ax.scatter(part1[inliers][:, 0], part1[inliers][:, 1], part1[inliers][:, 2], c='b',
            marker='o', label='Inlier data')
 ax.scatter(part1[outliers][:, 0], part1[outliers][:, 1], part1[outliers][:, 2], c='r',
            marker='o', label='Outlier data')
+'''
+average_x_1 =  reduce(lambda a, b: a + b, part1[inliers][:, 0]) / len(part1[inliers][:, 0])
+average_y_1 =  reduce(lambda a, b: a + b, part1[inliers][:, 1]) / len(part1[inliers][:, 1])
+average_z_1 =  np.min(new_z)
 
-average_x =  reduce(lambda a, b: a + b, part1[inliers][:, 0]) / len(part1[inliers][:, 0])
-average_y =  reduce(lambda a, b: a + b, part1[inliers][:, 1]) / len(part1[inliers][:, 1])
-average_z =  np.min(new_z)
-
-ax.scatter(average_x, average_y, average_z, c='g',
+ax.scatter(average_x_1, average_y_1, average_z_1, c='g',
            marker='o', label='mean data')
 
+
+
+
+model_robust, inliers2 = ransac(part2, LineModelND, min_samples=2,
+                               residual_threshold=0.00001, max_trials=1000)
+outliers = inliers == False
+
+# second side
+'''
+ax.scatter(part2[inliers][:, 0], part2[inliers][:, 1], part2[inliers][:, 2], c='g',
+           marker='o', label='Inlier data2')
+ax.scatter(part2[outliers][:, 0], part2[outliers][:, 1], part2[outliers][:, 2], c='g',
+           marker='o', label='Outlier data2')
+'''
+
+average_x_2 =  reduce(lambda a, b: a + b, part2[inliers2][:, 0]) / len(part2[inliers2][:, 0])
+average_y_2 =  reduce(lambda a, b: a + b, part2[inliers2][:, 1]) / len(part2[inliers2][:, 1])
+average_z_2 =  np.min(new_z)
+
+ax.scatter(average_x_2, average_y_2, average_z_2, c='b',
+           marker='o', label='mean data2')
+
+ax.plot(   [average_x_1,average_x_2], [ average_y_1,average_y_2] , [average_z_1,average_z_2])
 ax.legend(loc='lower left')
 pyplot.show()
-
 
 # this part is to find plane
 # but does not works so well because of the of extreme points
